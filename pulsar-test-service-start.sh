@@ -18,17 +18,12 @@
 # under the License.
 #
 
-set -ex
-ROOT=$(cd $(dirname $0)/.. && pwd)
+set -e
 
-git submodule update --init
+cd `dirname $0`
 
-$ROOT/bin/setup-dependencies.sh
-
-cmake -S pulsar-client-cpp -B build-pulsar \
-    -DCMAKE_PREFIX_PATH=$ROOT/dependencies \
-    -DPROTOC_PATH=$ROOT/dependencies/bin/protoc \
-    -DLINK_STATIC=ON \
-    -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_STATIC_LIB=OFF \
-    -DCMAKE_INSTALL_PREFIX=$ROOT/installed
-cmake --build build-pulsar -j8 --target install
+docker run -itd -p 6650:6650 -p 8080:8080 \
+    --mount source=pulsardata,target=/pulsar/data \
+    --mount source=pulsarconf,target=/pulsar/conf \
+    apachepulsar/pulsar:2.11.0 \
+    bin/pulsar standalone -nss -nfw > .container-id.txt
