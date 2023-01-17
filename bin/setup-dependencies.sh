@@ -72,7 +72,17 @@ if [[ ! -f .curl-done ]]; then
   curl -O -L  https://github.com/curl/curl/releases/download/curl-${CURL_VERSION_UNDERSCORE}/curl-${CURL_VERSION}.tar.gz
   tar xfz curl-${CURL_VERSION}.tar.gz
   cd curl-${CURL_VERSION}
-  CFLAGS=-fPIC ./configure --prefix=$PREFIX --with-ssl=$PREFIX --without-zstd
+  CFLAGS=-fPIC ./configure \
+      --without-zstd \
+      --without-brotli \
+      --without-nghttp2 \
+      --without-libidn2 \
+      --disable-ldap \
+      --without-brotli \
+      --without-secure-transport \
+      --with-ssl=$PREFIX \
+      --disable-ipv6 \
+      --prefix=$PREFIX
   make -j8 && make install
   cd -
   rm -rf curl-${CURL_VERSION}*
