@@ -46,7 +46,7 @@ jobs:
       - name: Build
         run: |
           ./bin/install-pulsar-cpp.sh
-          cmake -B build
+          cmake -B build -DCMAKE_PREFIX_PATH=$PWD/installed
           cmake --build build
 
       - name: Start Pulsar service
