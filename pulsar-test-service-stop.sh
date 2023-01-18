@@ -25,5 +25,5 @@ CONTAINER_ID_PATH=".container-id.txt"
 if [ -f ${CONTAINER_ID_PATH} ]; then
   CONTAINER_ID=$(cat $CONTAINER_ID_PATH)
   docker kill $CONTAINER_ID || true
-  rm .tests-container-id.txt
+  rm .container-id.txt
 fi

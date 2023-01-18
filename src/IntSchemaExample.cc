@@ -23,7 +23,7 @@
 using namespace pulsar;
 
 int main() {
-    Client client("pulsar://localhost:6650");
+    Client client("pulsar://127.0.0.1:6650");
     schema::IntSchema schema;
     std::string topic = "my-topic";
 
