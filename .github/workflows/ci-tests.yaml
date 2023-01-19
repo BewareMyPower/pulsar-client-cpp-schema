@@ -53,7 +53,10 @@ jobs:
         run: ./pulsar-test-service-start.sh
 
       - name: Run unit tests
-        run: ./build/src/IntSchemaExample
+        run: |
+          set -e
+          ./build/src/IntSchemaExample
+          ./build/src/AvroSchemaExample
 
       - name: Stop Pulsar service
         run: ./pulsar-test-service-stop.sh
