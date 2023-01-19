@@ -1,5 +1,6 @@
 # CMake directory created by ./bin/build-pulsar-cpp.sh
 build/
+build-pulsar/
 dependencies/
 installed/
 

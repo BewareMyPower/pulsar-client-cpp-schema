@@ -18,17 +18,27 @@
 # under the License.
 #
 
-set -ex
-ROOT=$(cd $(dirname $0)/.. && pwd)
+set -e
 
-git submodule update --init
+cd `dirname $0`
 
-$ROOT/bin/setup-dependencies.sh
+docker run --rm -itd -p 6650:6650 -p 8080:8080 \
+    --mount source=pulsardata,target=/pulsar/data \
+    --mount source=pulsarconf,target=/pulsar/conf \
+    apachepulsar/pulsar:2.11.0 \
+    bin/pulsar standalone -nss -nfw > .container-id.txt
 
-cmake -S pulsar-client-cpp -B build-pulsar \
-    -DCMAKE_PREFIX_PATH=$ROOT/dependencies \
-    -DPROTOC_PATH=$ROOT/dependencies/bin/protoc \
-    -DLINK_STATIC=ON \
-    -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_STATIC_LIB=OFF \
-    -DCMAKE_INSTALL_PREFIX=$ROOT/installed
-cmake --build build-pulsar -j8 --target install
+echo "-- Wait for Pulsar service to be ready"
+until curl http://localhost:8080/metrics > /dev/null 2>&1 ; do sleep 1; done
+while true; do
+  echo "# Query namespaces under tenant \"public\"..."
+  OUTPUT=$(curl -L http://localhost:8080/admin/v2/namespaces/public 2>/dev/null)
+  if grep "\"public\/default\"" <<< $OUTPUT; then
+    break
+  else
+    echo "Sleep for 1 second because public/default namespace does not exist"
+    sleep 1
+  fi
+done
+
+docker container ls | grep pulsar
