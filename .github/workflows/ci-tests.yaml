@@ -43,6 +43,15 @@ jobs:
       - name: Check formatting
         run: ./bin/check-format.sh
 
+      - name: Cache CMake build directories
+        uses: actions/cache@v3
+        timeout-minutes: 5
+        with:
+          path: |
+            ./dependencies/.*-done
+            ./installed
+          key: ${{ runner.os }}-cmake-build-${{ hashFiles('**/bin/*.sh') }}
+
       - name: Build
         run: |
           ./bin/install-pulsar-cpp.sh
@@ -54,12 +63,29 @@ jobs:
       - name: Start Pulsar service
         run: ./pulsar-test-service-start.sh
 
+      - name: Cache local Maven repository
+        uses: actions/cache@v3
+        timeout-minutes: 5
+        with:
+          path: |
+            ~/.m2/repository/*/*/*
+          key: ${{ runner.os }}-m2-dependencies-${{ hashFiles('./java-schema-tests/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-dependencies
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: 8
+
       - name: Run unit tests
         run: |
           set -e
           ./build/src/IntSchemaExample
           export LD_LIBRARY_PATH=$PWD/installed/lib
           ./build/src/AvroSchemaExample
+          cd ./java-schema-tests
+          mvn clean -Dtest=AvroSchemaTest#testConsume test
 
       - name: Stop Pulsar service
         run: ./pulsar-test-service-stop.sh

@@ -39,6 +39,7 @@ lib*.so*
 
 # Mac swap file
 *.DS_Store
+.java-version
 
 # Linux swap file
 *.swp
@@ -60,3 +61,14 @@ compile_commands.json
 # Visual Studio files
 out/
 CMakeSettings.json
+
+# Maven
+log/
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+.fleet/*
