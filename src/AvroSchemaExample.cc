@@ -18,6 +18,7 @@
  */
 #include <pulsar/schema/AvroSchema.h>
 
+#include "TestUtil.h"
 #include "avro/Decoder.hh"
 #include "avro/Encoder.hh"
 #include "avro/Specific.hh"
@@ -61,20 +62,22 @@ int main() {
     std::string topic = "my-topic-avro";
 
     Producer producer;
-    auto result = client.createProducer(topic, ProducerConfiguration{}.setSchema(schema), producer);
-    if (result != ResultOk) {
-        std::cerr << "Failed to create producer: " << result;
-        return 1;
-    }
+    ASSERT_EQ(client.createProducer(topic, ProducerConfiguration{}.setSchema(schema), producer), ResultOk);
+
+    Consumer consumer;
+    ASSERT_EQ(client.subscribe(topic, "sub-cpp", ConsumerConfiguration{}.setSchema(schema), consumer),
+              ResultOk);
 
     MessageId msgId;
-    result = producer.send(schema.newMessage(User{"xyz", 18}).build(), msgId);
-    if (result != ResultOk) {
-        std::cerr << "Failed to send: " << result << std::endl;
-        return 2;
-    }
+    ASSERT_EQ(producer.send(schema.newMessage(User{"xyz", 18}).build(), msgId), ResultOk);
     std::cout << "Sent to " << msgId << std::endl;
 
+    TypedMessage<User> msg;
+    ASSERT_EQ(consumer.receive(msg, 3000, schema), ResultOk);
+    ASSERT_EQ(msg.getValue().name, "xyz");
+    ASSERT_EQ(msg.getValue().age, 18);
+
+    consumer.acknowledge(msg);
     client.close();
     return 0;
 }
