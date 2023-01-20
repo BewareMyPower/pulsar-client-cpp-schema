@@ -50,7 +50,7 @@ jobs:
           path: |
             ./dependencies/.*-done
             ./installed
-          key: ${{ runner-os }}-cmake-build-${{ hashFiles('./bin/*.sh') }}
+          key: ${{ runner.os }}-cmake-build-${{ hashFiles('./bin/*.sh') }}
 
       - name: Build
         run: |
