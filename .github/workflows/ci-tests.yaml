@@ -46,6 +46,7 @@ jobs:
       - name: Build
         run: |
           ./bin/install-pulsar-cpp.sh
+          ./bin/install-avro-cpp.sh
           cmake -B build -DCMAKE_PREFIX_PATH=$PWD/installed
           cmake --build build
 
