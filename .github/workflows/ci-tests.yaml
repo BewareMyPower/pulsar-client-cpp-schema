@@ -84,6 +84,7 @@ jobs:
           ./build/src/IntSchemaExample
           export LD_LIBRARY_PATH=$PWD/installed/lib
           ./build/src/AvroSchemaExample
+          cd ./java-schema-tests
           mvn clean -Dtest=AvroSchemaTest#testConsume test
 
       - name: Stop Pulsar service
