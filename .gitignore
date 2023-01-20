@@ -1,8 +1,12 @@
 # CMake directory created by ./bin/build-pulsar-cpp.sh
 build/
 build-pulsar/
+build-avro/
 dependencies/
 installed/
+
+# Created by ./pulsar-test-service-start.sh
+.container-id.txt
 
 # Compiled Object files
 *.slo

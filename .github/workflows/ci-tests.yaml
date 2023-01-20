@@ -46,6 +46,8 @@ jobs:
       - name: Build
         run: |
           ./bin/install-pulsar-cpp.sh
+          ./bin/install-avro-cpp.sh
+          export LD_LIBRARY_PATH=$PWD/installed/lib
           cmake -B build -DCMAKE_PREFIX_PATH=$PWD/installed
           cmake --build build
 
@@ -53,7 +55,11 @@ jobs:
         run: ./pulsar-test-service-start.sh
 
       - name: Run unit tests
-        run: ./build/src/IntSchemaExample
+        run: |
+          set -e
+          ./build/src/IntSchemaExample
+          export LD_LIBRARY_PATH=$PWD/installed/lib
+          ./build/src/AvroSchemaExample
 
       - name: Stop Pulsar service
         run: ./pulsar-test-service-stop.sh
