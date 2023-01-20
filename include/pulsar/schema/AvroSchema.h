@@ -21,8 +21,7 @@
 #include <pulsar/Client.h>
 #include <pulsar/TypedMessageBuilder.h>
 
-// Fix compilation errors when including cstring
-#include <string.h>
+#include "avro/ValidSchema.hh"  // for avro::ValidSchema
 
 namespace pulsar {
 
@@ -68,7 +67,7 @@ namespace schema {
 template <typename T>
 class AvroSchema {
    public:
-    AvroSchema(const std::string& schema) : schemaInfo_(SchemaType::AVRO, "", schema) {}
+    AvroSchema(const std::string& schema);
 
     operator SchemaInfo() { return schemaInfo_; }
 
@@ -76,8 +75,11 @@ class AvroSchema {
         return TypedMessageBuilder<T>{encode}.setValue(value);
     }
 
+    T operator()(const char* data, std::size_t size) const;
+
    private:
     const SchemaInfo schemaInfo_;
+    const avro::ValidSchema validSchema_;
 
     static std::string encode(const T& value);
 };
@@ -85,10 +87,15 @@ class AvroSchema {
 }  // namespace schema
 }  // namespace pulsar
 
+#include "avro/Compiler.hh"  // for avro::compileJsonSchemaFromString
 #include "avro/Decoder.hh"   // for avro::Decoder
 #include "avro/Encoder.hh"   // for avro::Encoder
 #include "avro/Specific.hh"  // for avro::encode and avro::decode
 #include "avro/Stream.hh"    // for avro::OutputStream and avro::InputStream
+
+template <typename T>
+inline pulsar::schema::AvroSchema<T>::AvroSchema(const std::string& schema)
+    : schemaInfo_(SchemaType::AVRO, "", schema), validSchema_(avro::compileJsonSchemaFromString(schema)) {}
 
 template <typename T>
 inline std::string pulsar::schema::AvroSchema<T>::encode(const T& value) {
@@ -103,4 +110,16 @@ inline std::string pulsar::schema::AvroSchema<T>::encode(const T& value) {
     auto bytesPtr = avro::snapshot(*out);
     // TODO: avoid the copy by implementing our own OutputStream
     return std::string(bytesPtr->cbegin(), bytesPtr->cend());
+}
+
+template <typename T>
+inline T pulsar::schema::AvroSchema<T>::operator()(const char* data, std::size_t size) const {
+    std::unique_ptr<avro::InputStream> in =
+        avro::memoryInputStream(reinterpret_cast<const uint8_t*>(data), size);
+    std::shared_ptr<avro::Decoder> decoder = avro::validatingDecoder(validSchema_, avro::binaryDecoder());
+    decoder->init(*in);
+
+    T value;
+    avro::decode(*decoder, value);
+    return value;
 }
