@@ -104,12 +104,25 @@ inline std::string pulsar::schema::AvroSchema<T>::encode(const T& value) {
     encoder->init(*out);
 
     avro::encode(*encoder, value);
-
     encoder->flush();
 
-    auto bytesPtr = avro::snapshot(*out);
-    // TODO: avoid the copy by implementing our own OutputStream
-    return std::string(bytesPtr->cbegin(), bytesPtr->cend());
+    std::unique_ptr<avro::InputStream> in = avro::memoryInputStream(*out);
+    size_t pos = 0;
+    size_t readable = out->byteCount();
+    std::string data(readable, '\0');
+
+    const uint8_t* ptr;
+    size_t len;
+    while (readable > 0 && in->next(&ptr, &len)) {
+        if (len > readable) {
+            readable = len;
+        }
+        std::copy(ptr, ptr + len, &data[pos]);
+        pos += len;
+        readable -= len;
+    }
+
+    return data;
 }
 
 template <typename T>
