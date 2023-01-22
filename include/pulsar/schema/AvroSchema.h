@@ -28,8 +28,8 @@ namespace pulsar {
 namespace schema {
 
 /**
- * To use this schema, you have to implement `avro::codec_traits<T>` if `T` is not generated from the
- * `avrogencpp` binary.
+ * To use this schema, you have to specialize the template `pulsar::schema::codec_traits<T>` if `T` is not
+ * generated from the `avrogencpp` binary.
  *
  * For example, given the following C struct:
  *
@@ -41,38 +41,47 @@ namespace schema {
  * };
  * ```
  *
- * You should implement the following template specialization like:
+ * You have to define the encode and decode order in the template specialization.
  *
  * ```c++
- * namespace avro {
+ * namespace pulsar {
+ * namespace schema {
  *
  * template <>
  * struct codec_traits<User> {
- *   static void encode(avro::Encoder& e, const User& user) {
- *     avro::encode(e, user.name);
- *     e.encodeUnionIndex(1);
- *     avro::encode(e, user.age);
+ *   static void encode(Encoder& e, const User& user) {
+ *     e.encode(user.age);
+ *     e.encode(user.name);
  *   };
  *
- *   static void decode(avro::Decoder& d, User& user) {
- *     avro::decode(d, user.name);
- *     d.decodeUnionIndex();
- *     avro::decode(d, user.age);
+ *   static void decode(Decoder& d, User& user) {
+ *     d.decode(user.age);
+ *     d.decode(user.name);
  *   };
  * };
  *
- * }  // namespace avro
+ * }  // namespace schema
+ * }  // namespace pulsar
+ * ```
+ *
+ * The corresponding schema definition of the specialization above is:
+ *
+ * ```json
+ * "fields": [
+ *     {"name": "age", "type": "int"},
+ *     {"name": "name", "type": ["null", "string"]}
+ * ]
  * ```
  */
 template <typename T>
 class AvroSchema {
    public:
-    AvroSchema(const std::string& schema);
+    AvroSchema(const std::string& schema, bool nullableString = true);
 
     operator SchemaInfo() { return schemaInfo_; }
 
     TypedMessageBuilder<T> newMessage(const T& value) const {
-        return TypedMessageBuilder<T>{encode}.setValue(value);
+        return TypedMessageBuilder<T>{[this](const T& value) { return encode(value); }}.setValue(value);
     }
 
     T operator()(const char* data, std::size_t size) const;
@@ -80,30 +89,35 @@ class AvroSchema {
    private:
     const SchemaInfo schemaInfo_;
     const avro::ValidSchema validSchema_;
+    const bool nullableString_;
 
-    static std::string encode(const T& value);
+    std::string encode(const T& value) const;
 };
 
 }  // namespace schema
 }  // namespace pulsar
 
+#include "Specific.h"
 #include "avro/Compiler.hh"  // for avro::compileJsonSchemaFromString
 #include "avro/Decoder.hh"   // for avro::Decoder
 #include "avro/Encoder.hh"   // for avro::Encoder
-#include "avro/Specific.hh"  // for avro::encode and avro::decode
 #include "avro/Stream.hh"    // for avro::OutputStream and avro::InputStream
 
 template <typename T>
-inline pulsar::schema::AvroSchema<T>::AvroSchema(const std::string& schema)
-    : schemaInfo_(SchemaType::AVRO, "", schema), validSchema_(avro::compileJsonSchemaFromString(schema)) {}
+inline pulsar::schema::AvroSchema<T>::AvroSchema(const std::string& schema, bool nullableString)
+    : schemaInfo_(SchemaType::AVRO, "", schema),
+      validSchema_(avro::compileJsonSchemaFromString(schema)),
+      nullableString_(nullableString) {}
 
 template <typename T>
-inline std::string pulsar::schema::AvroSchema<T>::encode(const T& value) {
+inline std::string pulsar::schema::AvroSchema<T>::encode(const T& value) const {
     std::unique_ptr<avro::OutputStream> out = avro::memoryOutputStream();
     std::shared_ptr<avro::Encoder> encoder = avro::binaryEncoder();
     encoder->init(*out);
 
-    avro::encode(*encoder, value);
+    pulsar::schema::Encoder proxy{*encoder, nullableString_};
+    proxy.encode(value);
+
     encoder->flush();
 
     std::unique_ptr<avro::InputStream> in = avro::memoryInputStream(*out);
@@ -132,7 +146,8 @@ inline T pulsar::schema::AvroSchema<T>::operator()(const char* data, std::size_t
     std::shared_ptr<avro::Decoder> decoder = avro::validatingDecoder(validSchema_, avro::binaryDecoder());
     decoder->init(*in);
 
+    pulsar::schema::Decoder proxy{*decoder, nullableString_};
     T value;
-    avro::decode(*decoder, value);
+    proxy.decode(value);
     return value;
 }

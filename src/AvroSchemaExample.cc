@@ -30,22 +30,24 @@ struct User {
     int age;
 };
 
-namespace avro {
+namespace pulsar {
+namespace schema {
+
 template <>
 struct codec_traits<User> {
-    static void encode(avro::Encoder& e, const User& user) {
-        avro::encode(e, user.age);
-        e.encodeUnionIndex(1);
-        avro::encode(e, user.name);
+    static void encode(Encoder& e, const User& user) {
+        e.encode(user.age);
+        e.encode(user.name);
     }
 
-    static void decode(avro::Decoder& d, User& user) {
-        avro::decode(d, user.age);
-        d.decodeUnionIndex();
-        avro::decode(d, user.name);
+    static void decode(Decoder& d, User& user) {
+        d.decode(user.age);
+        d.decode(user.name);
     }
 };
-}  // namespace avro
+
+}  // namespace schema
+}  // namespace pulsar
 
 int main() {
     Client client("pulsar://localhost:6650");
